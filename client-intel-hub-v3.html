@@ -1218,7 +1218,8 @@ const PARSE_RULES = [
 
 function parseIntel(text) {
   const results = [];
-  const lines = text.split(/[\n。；;]/);
+  const lines = text.split(/[
+\u3002\uff1b;]/);\n。；;]/);
   lines.forEach(line => {
     const l = line.trim();
     if (!l || l.length < 4) return;
