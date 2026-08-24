@@ -616,4 +616,731 @@ async function renderCompany(id) {
       return `<div class="field-card" id="fc-${section}-${key}">
         <div class="field-label">${label}</div>
         <div class="field-value ${val ? '' : 'empty'}" id="fv-${section}-${key}">${val || '待录入'}</div>
-        <button class="field-edit-btn" onclick="start
+        <button class="field-edit-btn" onclick="startEdit('${section}','${key}','${coId}')">编辑</button>
+      </div>`;
+    }).join('');
+  }
+
+  function renderPeopleList(ps) {
+    if (!ps || !ps.length) return '<div style="color:var(--dim);font-size:13px">暂无关键人物，点击下方添加</div>';
+    return ps.map(p => `
+      <div class="person-card" id="pc-${p.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="person-name">${p.name}</div>
+            <div class="person-title">${p.title || ''} ${p.weight ? '· ' + p.weight : ''}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="editPerson('${p.id}')">编辑</button>
+            <button class="btn btn-danger btn-sm" onclick="deletePerson('${p.id}')">删除</button>
+          </div>
+        </div>
+        ${p.education ? `<div style="font-size:12px;color:var(--dim);margin-bottom:8px">学历：${p.education}</div>` : ''}
+        ${renderPersonField('过往经历', p.background)}
+        ${renderPersonField('核心工作', p.work_content)}
+        ${renderPersonField('管理风格', p.style)}
+        ${renderPersonField('接触策略', p.approach)}
+      </div>
+    `).join('');
+  }
+  function renderPersonField(label, val) {
+    if (!val) return '';
+    return `<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--dim)">${label}</div><div style="font-size:12px;line-height:1.6;white-space:pre-wrap">${val}</div></div>`;
+  }
+
+  function renderCompTable(cs) {
+    if (!cs || !cs.length) return '<div style="color:var(--dim);font-size:13px">暂无竞争对手数据</div>';
+    return `<table class="comp-table">
+      <thead><tr><th>公司</th><th>威胁</th><th>优势</th><th>劣势</th><th>核心差异</th><th>操作</th></tr></thead>
+      <tbody>
+      ${cs.map(c => `<tr>
+        <td style="font-weight:600">${c.name}</td>
+        <td><span class="threat-${c.threat==='高'?'high':c.threat==='中'?'mid':'low'}">${c.threat}</span></td>
+        <td style="white-space:pre-wrap">${c.strengths || '-'}</td>
+        <td style="white-space:pre-wrap">${c.weaknesses || '-'}</td>
+        <td style="white-space:pre-wrap">${c.diff || '-'}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="editComp('${c.id}')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteComp('${c.id}')">删除</button></td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  }
+
+  function renderSWOT(s) {
+    return `<div class="swot-grid">
+      <div class="swot-card"><div class="swot-label swot-S">S — 优势</div><div class="swot-text">${s.s || '待录入'}</div></div>
+      <div class="swot-card"><div class="swot-label swot-W">W — 劣势</div><div class="swot-text">${s.w || '待录入'}</div></div>
+      <div class="swot-card"><div class="swot-label swot-O">O — 机会</div><div class="swot-text">${s.o || '待录入'}</div></div>
+      <div class="swot-card"><div class="swot-label swot-T">T — 威胁</div><div class="swot-text">${s.t || '待录入'}</div></div>
+    </div>`;
+  }
+
+  function renderLogs(ls) {
+    if (!ls || !ls.length) return '<div style="color:var(--dim);font-size:13px">暂无情报记录</div>';
+    return ls.map(l => `
+      <div class="log-item">
+        <div class="log-meta">
+          <span>${l.author || '匿名'} · ${new Date(l.created_at).toLocaleString('zh-CN')}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteLog('${l.id}')">删除</button>
+        </div>
+        <div class="log-text">${l.raw_input || ''}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('company-detail').innerHTML = `
+    <div class="detail-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="detail-name">${co.name} ${co.alias ? '<span style="font-size:14px;color:var(--dim)">/ ' + co.alias + '</span>' : ''}</div>
+          <div class="detail-meta">
+            <span class="badge badge-${co.value_tier}">${co.value_tier} 级客户</span>
+            ${co.track ? `<span>${co.track}</span>` : ''}
+            ${co.stage ? `<span>${co.stage}</span>` : ''}
+            ${co.size ? `<span>${co.size} 人</span>` : ''}
+          </div>
+          ${co.intro ? `<div style="font-size:13px;color:var(--dim);line-height:1.6">${co.intro}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditBasic()">编辑基本信息</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCompany('${co.id}')">删除公司</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs" id="detail-tabs">
+      <div class="tab active" onclick="switchTab('hr',this)">HR 情报</div>
+      <div class="tab" onclick="switchTab('culture',this)">文化管理</div>
+      <div class="tab" onclick="switchTab('biz',this)">商业格局</div>
+      <div class="tab" onclick="switchTab('tech',this)">技术实力</div>
+      <div class="tab" onclick="switchTab('swot',this)">SWOT</div>
+      <div class="tab" onclick="switchTab('people',this)">关键人物</div>
+      <div class="tab" onclick="switchTab('comp',this)">竞争对手</div>
+      <div class="tab" onclick="switchTab('recruiter',this)">顾问信号</div>
+      <div class="tab" onclick="switchTab('mindmap',this)">组织架构</div>
+      <div class="tab" onclick="switchTab('log',this)">情报日志</div>
+    </div>
+
+    <div class="tab-content active" id="tab-hr">
+      <div class="field-grid">${renderFields(hr, HR_FIELDS, 'hr', id)}</div>
+    </div>
+    <div class="tab-content" id="tab-culture">
+      <div class="field-grid">${renderFields(culture, CULTURE_FIELDS, 'culture', id)}</div>
+    </div>
+    <div class="tab-content" id="tab-biz">
+      <div class="field-grid">${renderFields(biz, BIZ_FIELDS, 'biz', id)}</div>
+    </div>
+    <div class="tab-content" id="tab-tech">
+      <div class="field-grid">${renderFields(tech, TECH_FIELDS, 'tech', id)}</div>
+    </div>
+    <div class="tab-content" id="tab-swot">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="openSWOT()">编辑 SWOT</button>
+      </div>
+      <div id="swot-render">${renderSWOT(swot)}</div>
+    </div>
+    <div class="tab-content" id="tab-people">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" onclick="openAddPerson()">+ 添加人物</button>
+      </div>
+      <div class="people-list" id="people-list">${renderPeopleList(people)}</div>
+    </div>
+    <div class="tab-content" id="tab-comp">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" onclick="openAddComp()">+ 添加竞对</button>
+      </div>
+      <div id="comp-list">${renderCompTable(comps)}</div>
+    </div>
+    <div class="tab-content" id="tab-recruiter">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="openRecruiter()">编辑顾问信号</button>
+      </div>
+      <div class="field-grid">
+        ${[['roles','当前空缺职位'],['pitch','候选人推荐话术'],['rejects','候选人拒绝高频原因'],['hr_approach','HR 接触策略'],['other','其他顾问信号']].map(([k,l]) =>
+          `<div class="field-card"><div class="field-label">${l}</div><div class="field-value ${rec[k]?'':'empty'}">${rec[k]||'待录入'}</div></div>`
+        ).join('')}
+      </div>
+    </div>
+    <div class="tab-content" id="tab-mindmap">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="openMindmap()">编辑 JSON 数据</button>
+      </div>
+      <div id="mindmap-canvas"></div>
+    </div>
+    <div class="tab-content" id="tab-log">
+      <div class="log-list">${renderLogs(logs)}</div>
+    </div>
+  `;
+
+  // render mindmap
+  if (co.mindmap && co.mindmap.center) drawMindmap(co.mindmap);
+}
+
+// ============ TABS ============
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const tc = document.getElementById('tab-' + name);
+  if (tc) tc.classList.add('active');
+}
+
+// ============ INLINE FIELD EDIT ============
+const SECTION_MAP = {hr: 'hr', culture: 'culture', biz: 'business', tech: 'tech'};
+function startEdit(section, key, coId) {
+  const co = companiesCache.find(c => c.id === coId);
+  const dbField = SECTION_MAP[section];
+  const val = (co[dbField] || {})[key] || '';
+  const container = document.getElementById('fc-' + section + '-' + key);
+  const valueEl = document.getElementById('fv-' + section + '-' + key);
+  valueEl.style.display = 'none';
+  container.querySelector('.field-edit-btn').style.display = 'none';
+
+  const ta = document.createElement('textarea');
+  ta.className = 'field-edit-area';
+  ta.value = val;
+  ta.id = 'fea-' + section + '-' + key;
+
+  const actions = document.createElement('div');
+  actions.className = 'field-edit-actions';
+  actions.innerHTML = `
+    <button class="btn btn-ok btn-sm" onclick="saveField('${section}','${key}','${coId}')">保存</button>
+    <button class="btn btn-ghost btn-sm" onclick="cancelEdit('${section}','${key}')">取消</button>
+  `;
+  container.appendChild(ta);
+  container.appendChild(actions);
+  ta.focus();
+}
+function cancelEdit(section, key) {
+  const container = document.getElementById('fc-' + section + '-' + key);
+  const ta = document.getElementById('fea-' + section + '-' + key);
+  if (ta) ta.remove();
+  const actions = container.querySelector('.field-edit-actions');
+  if (actions) actions.remove();
+  document.getElementById('fv-' + section + '-' + key).style.display = '';
+  container.querySelector('.field-edit-btn').style.display = '';
+}
+async function saveField(section, key, coId) {
+  const ta = document.getElementById('fea-' + section + '-' + key);
+  const newVal = ta.value.trim();
+  const co = companiesCache.find(c => c.id === coId);
+  const dbField = SECTION_MAP[section];
+  const updated = Object.assign({}, co[dbField] || {});
+  updated[key] = newVal;
+  setSyncStatus('保存中...', '');
+  try {
+    await db.update('intel_companies', coId, {[dbField]: updated});
+    co[dbField] = updated;
+    const valueEl = document.getElementById('fv-' + section + '-' + key);
+    valueEl.textContent = newVal || '待录入';
+    valueEl.className = 'field-value' + (newVal ? '' : ' empty');
+    cancelEdit(section, key);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('已保存', 'ok');
+  } catch(e) {
+    setSyncStatus('保存失败', 'err');
+    toast('保存失败：' + e.message, 'err');
+  }
+}
+
+// ============ ADD COMPANY ============
+async function addCompany() {
+  const name = document.getElementById('nc-name').value.trim();
+  if (!name) { toast('请填写公司名称', 'err'); return; }
+  setSyncStatus('保存中...', '');
+  try {
+    const rows = await db.insert('intel_companies', {
+      name,
+      alias: document.getElementById('nc-alias').value.trim(),
+      track: document.getElementById('nc-track').value,
+      stage: document.getElementById('nc-stage').value,
+      size: document.getElementById('nc-size').value.trim(),
+      value_tier: document.getElementById('nc-tier').value,
+      intro: document.getElementById('nc-intro').value.trim(),
+      hr: {}, culture: {}, business: {}, tech: {},
+      swot: {s:'',w:'',o:'',t:''}, recruiter: {}, mindmap: {}
+    });
+    closeModal('modal-add-company');
+    ['nc-name','nc-alias','nc-size','nc-intro'].forEach(id => document.getElementById(id).value = '');
+    await loadAll();
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('公司档案已创建', 'ok');
+    if (rows && rows[0]) showCompany(rows[0].id);
+  } catch(e) {
+    setSyncStatus('失败', 'err');
+    toast('创建失败（可能名称重复）：' + e.message, 'err');
+  }
+}
+
+// ============ EDIT BASIC ============
+function openEditBasic() {
+  const co = companiesCache.find(c => c.id === currentCompanyId);
+  if (!co) return;
+  document.getElementById('eb-name').value = co.name || '';
+  document.getElementById('eb-alias').value = co.alias || '';
+  document.getElementById('eb-track').value = co.track || '';
+  document.getElementById('eb-stage').value = co.stage || '';
+  document.getElementById('eb-size').value = co.size || '';
+  document.getElementById('eb-tier').value = co.value_tier || 'B';
+  document.getElementById('eb-intro').value = co.intro || '';
+  openModal('modal-edit-basic');
+}
+async function saveBasic() {
+  setSyncStatus('保存中...', '');
+  try {
+    const upd = {
+      name: document.getElementById('eb-name').value.trim(),
+      alias: document.getElementById('eb-alias').value.trim(),
+      track: document.getElementById('eb-track').value.trim(),
+      stage: document.getElementById('eb-stage').value.trim(),
+      size: document.getElementById('eb-size').value.trim(),
+      value_tier: document.getElementById('eb-tier').value,
+      intro: document.getElementById('eb-intro').value.trim()
+    };
+    await db.update('intel_companies', currentCompanyId, upd);
+    closeModal('modal-edit-basic');
+    await loadAll();
+    await renderCompany(currentCompanyId);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('基本信息已更新', 'ok');
+  } catch(e) {
+    toast('保存失败：' + e.message, 'err');
+  }
+}
+
+// ============ DELETE COMPANY ============
+async function deleteCompany(id) {
+  if (!confirm('确认删除该公司档案？所有关联数据（人物、竞对、日志）将一并删除，不可恢复。')) return;
+  try {
+    await db.delete('intel_companies', id);
+    await loadAll();
+    showDashboard(document.querySelector('.nav-item.dashboard-item'));
+    toast('公司档案已删除', 'ok');
+  } catch(e) {
+    toast('删除失败：' + e.message, 'err');
+  }
+}
+
+// ============ PERSONS ============
+function openAddPerson() {
+  editingPersonId = null;
+  document.getElementById('modal-person-title').textContent = '添加关键人物';
+  ['mp-name','mp-title','mp-edu','mp-bg','mp-work','mp-style','mp-approach'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mp-weight').value = '执行层';
+  openModal('modal-person');
+}
+async function editPerson(pid) {
+  editingPersonId = pid;
+  document.getElementById('modal-person-title').textContent = '编辑关键人物';
+  try {
+    const rows = await db.get('intel_people', 'id=eq.' + pid + '&select=*');
+    const p = rows[0];
+    document.getElementById('mp-name').value = p.name || '';
+    document.getElementById('mp-title').value = p.title || '';
+    document.getElementById('mp-edu').value = p.education || '';
+    document.getElementById('mp-bg').value = p.background || '';
+    document.getElementById('mp-work').value = p.work_content || '';
+    document.getElementById('mp-style').value = p.style || '';
+    document.getElementById('mp-approach').value = p.approach || '';
+    document.getElementById('mp-weight').value = p.weight || '执行层';
+    openModal('modal-person');
+  } catch(e) { toast('加载失败', 'err'); }
+}
+async function savePerson() {
+  const name = document.getElementById('mp-name').value.trim();
+  if (!name) { toast('请填写姓名', 'err'); return; }
+  const data = {
+    name,
+    title: document.getElementById('mp-title').value.trim(),
+    education: document.getElementById('mp-edu').value.trim(),
+    background: document.getElementById('mp-bg').value.trim(),
+    work_content: document.getElementById('mp-work').value.trim(),
+    style: document.getElementById('mp-style').value.trim(),
+    approach: document.getElementById('mp-approach').value.trim(),
+    weight: document.getElementById('mp-weight').value,
+    company_id: currentCompanyId
+  };
+  setSyncStatus('保存中...', '');
+  try {
+    if (editingPersonId) await db.update('intel_people', editingPersonId, data);
+    else await db.insert('intel_people', data);
+    closeModal('modal-person');
+    await renderCompany(currentCompanyId);
+    switchTab('people', document.querySelectorAll('.tab')[5]);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('人物信息已保存', 'ok');
+  } catch(e) { toast('保存失败：' + e.message, 'err'); }
+}
+async function deletePerson(pid) {
+  if (!confirm('确认删除该人物？')) return;
+  try {
+    await db.delete('intel_people', pid);
+    document.getElementById('pc-' + pid).remove();
+    toast('已删除', 'ok');
+  } catch(e) { toast('删除失败', 'err'); }
+}
+
+// ============ COMPETITORS ============
+function openAddComp() {
+  editingCompId = null;
+  document.getElementById('modal-comp-title').textContent = '添加竞争对手';
+  ['cp-name','cp-str','cp-weak','cp-diff'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cp-threat').value = '中';
+  openModal('modal-comp');
+}
+async function editComp(cid) {
+  editingCompId = cid;
+  document.getElementById('modal-comp-title').textContent = '编辑竞争对手';
+  try {
+    const rows = await db.get('intel_competitors', 'id=eq.' + cid + '&select=*');
+    const c = rows[0];
+    document.getElementById('cp-name').value = c.name || '';
+    document.getElementById('cp-threat').value = c.threat || '中';
+    document.getElementById('cp-str').value = c.strengths || '';
+    document.getElementById('cp-weak').value = c.weaknesses || '';
+    document.getElementById('cp-diff').value = c.diff || '';
+    openModal('modal-comp');
+  } catch(e) { toast('加载失败', 'err'); }
+}
+async function saveComp() {
+  const name = document.getElementById('cp-name').value.trim();
+  if (!name) { toast('请填写公司名称', 'err'); return; }
+  const data = {
+    name,
+    threat: document.getElementById('cp-threat').value,
+    strengths: document.getElementById('cp-str').value.trim(),
+    weaknesses: document.getElementById('cp-weak').value.trim(),
+    diff: document.getElementById('cp-diff').value.trim(),
+    company_id: currentCompanyId
+  };
+  setSyncStatus('保存中...', '');
+  try {
+    if (editingCompId) await db.update('intel_competitors', editingCompId, data);
+    else await db.insert('intel_competitors', data);
+    closeModal('modal-comp');
+    await renderCompany(currentCompanyId);
+    switchTab('comp', document.querySelectorAll('.tab')[6]);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('竞对信息已保存', 'ok');
+  } catch(e) { toast('保存失败：' + e.message, 'err'); }
+}
+async function deleteComp(cid) {
+  if (!confirm('确认删除？')) return;
+  try {
+    await db.delete('intel_competitors', cid);
+    await renderCompany(currentCompanyId);
+    switchTab('comp', document.querySelectorAll('.tab')[6]);
+    toast('已删除', 'ok');
+  } catch(e) { toast('删除失败', 'err'); }
+}
+
+// ============ SWOT ============
+function openSWOT() {
+  const co = companiesCache.find(c => c.id === currentCompanyId);
+  const s = co.swot || {};
+  document.getElementById('swot-s').value = s.s || '';
+  document.getElementById('swot-w').value = s.w || '';
+  document.getElementById('swot-o').value = s.o || '';
+  document.getElementById('swot-t').value = s.t || '';
+  openModal('modal-swot');
+}
+async function saveSWOT() {
+  const swot = {
+    s: document.getElementById('swot-s').value.trim(),
+    w: document.getElementById('swot-w').value.trim(),
+    o: document.getElementById('swot-o').value.trim(),
+    t: document.getElementById('swot-t').value.trim()
+  };
+  setSyncStatus('保存中...', '');
+  try {
+    await db.update('intel_companies', currentCompanyId, {swot});
+    companiesCache.find(c => c.id === currentCompanyId).swot = swot;
+    closeModal('modal-swot');
+    document.getElementById('swot-render').innerHTML = `
+      <div class="swot-grid">
+        <div class="swot-card"><div class="swot-label swot-S">S — 优势</div><div class="swot-text">${swot.s || '待录入'}</div></div>
+        <div class="swot-card"><div class="swot-label swot-W">W — 劣势</div><div class="swot-text">${swot.w || '待录入'}</div></div>
+        <div class="swot-card"><div class="swot-label swot-O">O — 机会</div><div class="swot-text">${swot.o || '待录入'}</div></div>
+        <div class="swot-card"><div class="swot-label swot-T">T — 威胁</div><div class="swot-text">${swot.t || '待录入'}</div></div>
+      </div>`;
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('SWOT 已保存', 'ok');
+  } catch(e) { toast('保存失败：' + e.message, 'err'); }
+}
+
+// ============ RECRUITER ============
+function openRecruiter() {
+  const co = companiesCache.find(c => c.id === currentCompanyId);
+  const r = co.recruiter || {};
+  document.getElementById('rec-roles').value = r.roles || '';
+  document.getElementById('rec-pitch').value = r.pitch || '';
+  document.getElementById('rec-rejects').value = r.rejects || '';
+  document.getElementById('rec-hr').value = r.hr_approach || '';
+  document.getElementById('rec-other').value = r.other || '';
+  openModal('modal-recruiter');
+}
+async function saveRecruiter() {
+  const rec = {
+    roles: document.getElementById('rec-roles').value.trim(),
+    pitch: document.getElementById('rec-pitch').value.trim(),
+    rejects: document.getElementById('rec-rejects').value.trim(),
+    hr_approach: document.getElementById('rec-hr').value.trim(),
+    other: document.getElementById('rec-other').value.trim()
+  };
+  setSyncStatus('保存中...', '');
+  try {
+    await db.update('intel_companies', currentCompanyId, {recruiter: rec});
+    companiesCache.find(c => c.id === currentCompanyId).recruiter = rec;
+    closeModal('modal-recruiter');
+    await renderCompany(currentCompanyId);
+    switchTab('recruiter', document.querySelectorAll('.tab')[7]);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('顾问信号已保存', 'ok');
+  } catch(e) { toast('保存失败：' + e.message, 'err'); }
+}
+
+// ============ MINDMAP ============
+function openMindmap() {
+  const co = companiesCache.find(c => c.id === currentCompanyId);
+  const mm = co.mindmap || {center: co.name, branches: []};
+  document.getElementById('mm-json').value = JSON.stringify(mm, null, 2);
+  openModal('modal-mindmap');
+}
+async function saveMindmap() {
+  let mm;
+  try {
+    mm = JSON.parse(document.getElementById('mm-json').value);
+  } catch(e) {
+    toast('JSON 格式有误，请检查', 'err'); return;
+  }
+  setSyncStatus('保存中...', '');
+  try {
+    await db.update('intel_companies', currentCompanyId, {mindmap: mm});
+    companiesCache.find(c => c.id === currentCompanyId).mindmap = mm;
+    closeModal('modal-mindmap');
+    drawMindmap(mm);
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('组织架构已保存', 'ok');
+  } catch(e) { toast('保存失败：' + e.message, 'err'); }
+}
+function drawMindmap(mm) {
+  const canvas = document.getElementById('mindmap-canvas');
+  if (!mm || !mm.center) { canvas.innerHTML = '<div style="color:var(--dim);padding:40px;text-align:center">暂无架构数据，点击上方编辑</div>'; return; }
+  const W = canvas.clientWidth || 800, H = 520;
+  const cx = W/2, cy = H/2, R1 = 160, R2 = 280, R3 = 380;
+  const branches = mm.branches || [];
+  const n = branches.length;
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs><marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0L6,3L0,6Z" fill="#4f8ef750"/></marker></defs>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="46" fill="#4f8ef730" stroke="#4f8ef7" stroke-width="1.5"/>
+    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" fill="#4f8ef7" font-size="14" font-weight="700">${mm.center}</text>`;
+  branches.forEach((b, i) => {
+    const angle = (2*Math.PI*i/n) - Math.PI/2;
+    const bx = cx + R1*Math.cos(angle), by = cy + R1*Math.sin(angle);
+    svg += `<line x1="${cx}" y1="${cy}" x2="${bx}" y2="${by}" stroke="#4f8ef750" stroke-width="1.5"/>`;
+    svg += `<circle cx="${bx}" cy="${by}" r="36" fill="#1e223590" stroke="#4f8ef790" stroke-width="1"/>`;
+    const labelLines = (b.label||'').match(/.{1,6}/g)||[b.label];
+    labelLines.forEach((ln, li) => {
+      svg += `<text x="${bx}" y="${by + (li - (labelLines.length-1)/2)*14}" text-anchor="middle" dominant-baseline="middle" fill="#e8eaf0" font-size="11">${ln}</text>`;
+    });
+    const children = b.children || [];
+    const nc = children.length;
+    children.forEach((c, j) => {
+      const spread = Math.min(nc * 0.35, 1.2);
+      const cAngle = angle + (nc > 1 ? (j/(nc-1) - 0.5)*spread : 0);
+      const cx2 = cx + R2*Math.cos(cAngle), cy2 = cy + R2*Math.sin(cAngle);
+      svg += `<line x1="${bx}" y1="${by}" x2="${cx2}" y2="${cy2}" stroke="#7a809950" stroke-width="1"/>`;
+      svg += `<circle cx="${cx2}" cy="${cy2}" r="28" fill="#181c2790" stroke="#7a8099" stroke-width="1"/>`;
+      const cLines = (c.label||'').match(/.{1,5}/g)||[c.label];
+      cLines.forEach((ln, li) => {
+        svg += `<text x="${cx2}" y="${cy2 + (li-(cLines.length-1)/2)*12}" text-anchor="middle" dominant-baseline="middle" fill="#c8cad8" font-size="10">${ln}</text>`;
+      });
+      (c.children||[]).forEach((gc, k) => {
+        const gcn = (c.children||[]).length;
+        const spread2 = Math.min(gcn * 0.3, 0.9);
+        const gcAngle = cAngle + (gcn > 1 ? (k/(gcn-1) - 0.5)*spread2 : 0);
+        const gx = cx + R3*Math.cos(gcAngle), gy = cy + R3*Math.sin(gcAngle);
+        svg += `<line x1="${cx2}" y1="${cy2}" x2="${gx}" y2="${gy}" stroke="#2a2f4560" stroke-width="1"/>`;
+        svg += `<circle cx="${gx}" cy="${gy}" r="22" fill="#0f111790" stroke="#2a2f45" stroke-width="1"/>`;
+        const gLines = (gc.label||'').match(/.{1,4}/g)||[gc.label];
+        gLines.forEach((ln, li) => {
+          svg += `<text x="${gx}" y="${gy + (li-(gLines.length-1)/2)*11}" text-anchor="middle" dominant-baseline="middle" fill="#7a8099" font-size="9">${ln}</text>`;
+        });
+      });
+    });
+  });
+  svg += '</svg>';
+  canvas.innerHTML = svg;
+}
+
+// ============ INTEL PARSE ============
+const PARSE_RULES = [
+  // HR
+  {keys:['上下班','上班时间','几点上班','几点下班','工作时间','朝九晚五','9to6','955','996','007'],section:'hr',field:'work_hours',label:'上下班时间'},
+  {keys:['加班','overtime','通宵','连续工作','休息日上班','周末上班'],section:'hr',field:'overtime',label:'加班情况'},
+  {keys:['加班严重','加班文化','卷','内卷','拼命'],section:'hr',field:'overtime_severity',label:'加班严重程度'},
+  {keys:['发工资','发薪','工资日','几号发','薪资日'],section:'hr',field:'pay_date',label:'发薪日'},
+  {keys:['薪资结构','底薪','基本工资','固定','绩效工资','浮动','提成'],section:'hr',field:'salary_structure',label:'薪资结构'},
+  {keys:['五险','一金','社保','公积金','保险基数','缴纳基数'],section:'hr',field:'social_insurance_base',label:'五险一金基数'},
+  {keys:['缴纳比例','社保比例','公积金比例'],section:'hr',field:'social_insurance_ratio',label:'五险一金比例'},
+  {keys:['年终奖','年终','年底奖','13薪','14薪','双薪','奖金'],section:'hr',field:'annual_bonus',label:'年终奖'},
+  {keys:['年终发放','奖金发放','什么时候发奖'],section:'hr',field:'bonus_timing',label:'年终奖发放时间'},
+  {keys:['期权','股票','股权','vesting','归属','行权'],section:'hr',field:'equity',label:'期权/股权情况'},
+  {keys:['绩效考核','KPI','OKR','考核体系','考核周期','季度考核','年度考核'],section:'hr',field:'performance_system',label:'绩效考核体系'},
+  {keys:['末位淘汰','PIP','末位','淘汰','裁员'],section:'hr',field:'bottom_out',label:'末位淘汰'},
+  {keys:['晋升','升职','晋级','提拔','升P'],section:'hr',field:'promotion_speed',label:'晋升情况'},
+  {keys:['年假','假期','带薪假','休假'],section:'hr',field:'vacation',label:'年假政策'},
+  {keys:['远程','居家办公','wfh','work from home'],section:'hr',field:'remote_policy',label:'远程办公政策'},
+  {keys:['补贴','餐饮','餐补','交通补贴','饭补'],section:'hr',field:'subsidies',label:'补贴情况'},
+  // CULTURE
+  {keys:['领导风格','管理风格','老板','领导','boss','ceo','创始人性格'],section:'culture',field:'leadership_style',label:'领导风格'},
+  {keys:['骂人','训人','批评','当众','大声','情绪化','发脾气'],section:'culture',field:'scold_culture',label:'领导是否骂人'},
+  {keys:['管理模式','PDT','扁平','层级','汇报','管理机制'],section:'culture',field:'mgmt_model',label:'管理模式'},
+  {keys:['决策','拍板','决策速度','审批','流程'],section:'culture',field:'decision_speed',label:'决策速度'},
+  {keys:['政治','派系','站队','帮派','关系复杂'],section:'culture',field:'politics',label:'内部政治'},
+  {keys:['人际','人际关系','氛围','同事','团队关系'],section:'culture',field:'interpersonal',label:'团队人际关系'},
+  {keys:['氛围','工作氛围','文化','公司文化'],section:'culture',field:'atmosphere',label:'工作氛围'},
+  {keys:['狼性','拼','卷','强度大','压力大'],section:'culture',field:'wolf_culture',label:'狼性程度'},
+  {keys:['沟通','沟通方式','汇报方式','反馈'],section:'culture',field:'communication',label:'沟通风格'},
+  // BIZ
+  {keys:['客户','客群','服务对象','to B','to C','toG'],section:'biz',field:'main_customers',label:'主要客户'},
+  {keys:['营收','收入','盈利','商业模式','变现'],section:'biz',field:'revenue_model',label:'营收模式'},
+  {keys:['融资','轮次','估值','投资方','VC','PE'],section:'biz',field:'funding_runway',label:'融资情况'},
+  {keys:['消耗','burn','烧钱','月均支出','现金'],section:'biz',field:'burn_rate',label:'资金消耗'},
+  {keys:['护城河','壁垒','竞争优势','差异化','核心优势'],section:'biz',field:'moat',label:'护城河'},
+  {keys:['产品','产品线','产品矩阵','主要产品'],section:'biz',field:'product_matrix',label:'产品矩阵'},
+  {keys:['口碑','行业评价','市场评价','业内评价'],section:'biz',field:'industry_reputation',label:'行业口碑'},
+  {keys:['候选人反馈','候选人说','面试反馈'],section:'biz',field:'candidate_feedback',label:'候选人反馈'},
+  // TECH
+  {keys:['自研','自研率','硬件自研','技术自主'],section:'tech',field:'self_reliance_hw',label:'硬件自研率'},
+  {keys:['大模型','AI能力','模型','算法','具身智能'],section:'tech',field:'ai_model',label:'AI/大模型能力'},
+  {keys:['专利','发明专利','知识产权'],section:'tech',field:'patents',label:'专利情况'},
+  {keys:['技术实力','技术水平','研发能力','研发水平'],section:'tech',field:'core_tech',label:'核心技术能力'},
+];
+
+function parseIntel(text) {
+  const results = [];
+  const lines = text.split(new RegExp("[\n\u3002\uff1b;]"));
+  lines.forEach(line => {
+    const l = line.trim();
+    if (!l || l.length < 4) return;
+    let matched = false;
+    for (const rule of PARSE_RULES) {
+      if (rule.keys.some(k => l.includes(k))) {
+        const existing = results.find(r => r.section === rule.section && r.field === rule.field);
+        if (existing) {
+          existing.value += '\n' + l;
+        } else {
+          results.push({section: rule.section, field: rule.field, label: rule.label, value: l});
+        }
+        matched = true; break;
+      }
+    }
+    if (!matched) {
+      const other = results.find(r => r.field === '_other');
+      if (other) other.value += '\n' + l;
+      else results.push({section:'hr',field:'_other',label:'其他水下信息',value:l});
+    }
+  });
+  return results;
+}
+
+function parseAndPreview() {
+  const text = document.getElementById('input-text').value.trim();
+  const coId = document.getElementById('input-company-select').value;
+  if (!text) { toast('请输入情报内容', 'err'); return; }
+  if (!coId) { toast('请选择目标公司', 'err'); return; }
+  const results = parseIntel(text);
+  parsedData = {coId, text, results};
+  const listEl = document.getElementById('parsed-list');
+  const SECTION_LABELS = {hr:'HR情报', culture:'文化管理', biz:'商业格局', tech:'技术实力'};
+  listEl.innerHTML = results.map(r => `
+    <div class="parsed-item">
+      <div class="parsed-key">${r.label}</div>
+      <div class="parsed-val">${r.value}</div>
+      <div class="parsed-cat">${SECTION_LABELS[r.section] || r.section}</div>
+    </div>
+  `).join('') || '<div style="color:var(--dim);padding:12px">未能识别出分类信息，将作为情报日志记录</div>';
+  document.getElementById('parsed-preview').style.display = 'block';
+}
+
+async function confirmSave() {
+  if (!parsedData) return;
+  const {coId, text, results} = parsedData;
+  const author = document.getElementById('input-author').value.trim() || '匿名';
+  setSyncStatus('保存中...', '');
+  try {
+    // save log
+    await db.insert('intel_logs', {company_id: coId, author, raw_input: text, parsed: {}});
+    // merge into company fields
+    const co = companiesCache.find(c => c.id === coId);
+    const FIELD_MAP = {hr:'hr', culture:'culture', biz:'business', tech:'tech'};
+    const updates = {};
+    results.forEach(r => {
+      if (r.field === '_other') return;
+      const dbField = FIELD_MAP[r.section];
+      if (!dbField) return;
+      if (!updates[dbField]) updates[dbField] = Object.assign({}, co[dbField] || {});
+      const existing = updates[dbField][r.field] || '';
+      updates[dbField][r.field] = existing ? existing + '\n---\n' + r.value : r.value;
+    });
+    if (Object.keys(updates).length > 0) {
+      await db.update('intel_companies', coId, updates);
+      Object.assign(co, updates);
+    }
+    document.getElementById('input-text').value = '';
+    document.getElementById('parsed-preview').style.display = 'none';
+    parsedData = null;
+    setSyncStatus('已保存 ' + now(), 'ok');
+    toast('情报已保存并归档', 'ok');
+    await loadAll();
+  } catch(e) {
+    setSyncStatus('保存失败', 'err');
+    toast('保存失败：' + e.message, 'err');
+  }
+}
+function cancelParse() {
+  parsedData = null;
+  document.getElementById('parsed-preview').style.display = 'none';
+}
+function clearInput() {
+  document.getElementById('input-text').value = '';
+  document.getElementById('parsed-preview').style.display = 'none';
+  parsedData = null;
+}
+
+// ============ LOG DELETE ============
+async function deleteLog(lid) {
+  if (!confirm('确认删除该条情报记录？')) return;
+  try {
+    await db.delete('intel_logs', lid);
+    await renderCompany(currentCompanyId);
+    switchTab('log', document.querySelectorAll('.tab')[9]);
+    toast('已删除', 'ok');
+  } catch(e) { toast('删除失败', 'err'); }
+}
+
+// ============ COMPANY SELECT ============
+function populateCompanySelect() {
+  const sel = document.getElementById('input-company-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 选择目标公司 --</option>' +
+    companiesCache.map(c => `<option value="${c.id}" ${c.id===cur?'selected':''}>${c.name}</option>`).join('');
+}
+
+// ============ MODALS ============
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+// ============ TOAST ============
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a301d8ec5c1fd0a1',t:'MTc4NzU2OTE2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
