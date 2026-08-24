@@ -1218,7 +1218,7 @@ const PARSE_RULES = [
 
 function parseIntel(text) {
   const results = [];
-  const lines = text.split(/[
+  const lines = text.split(/[\n\u3002\uff1b;]/);
 。；;]/);
   lines.forEach(line => {
     const l = line.trim();
